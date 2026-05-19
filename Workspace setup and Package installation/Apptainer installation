@@ -15,13 +15,23 @@ apptainer --version
 #Pulling the docker container image for BATTER
 apptainer pull batter.sif docker://jinyf1998/batter:v0.0
 
-#Setting the path to BATTER as a variable
+#Setting the path to BATTER as a variable, and adding the path to bash file to make the vairiable permanent and available in the Apptainer program and allows it to run every time the terminal is opened
+
 BATTER=/home/oc/binf_6999_2026/batter.sif
+nano ~/.bashrc
+export PATH=$PATH:/usr/bin
+export BATTER=/home/oc/binf_6999_2026/batter.sif
+
+source ~/.bashrc
 echo $BATTER
 
 
 # Running BATTER on phage data 
-
+apptainer exec batter_latest.sif batter --input sequences.fa --output results/
+OR
+# sif is the path of image
+apptainer exec --nv -B $(pwd) batter.sif /bin/bash
+conda activate batter-env
 
 #COMEBACK TO THIS LATER FOR OTHER PACKAGES
 #Storing the container paths in the bash.rc file

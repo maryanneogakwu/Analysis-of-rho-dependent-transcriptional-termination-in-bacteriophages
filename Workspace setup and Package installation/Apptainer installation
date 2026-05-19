@@ -25,6 +25,18 @@ export BATTER=/home/oc/binf_6999_2026/batter.sif
 source ~/.bashrc
 echo $BATTER
 
+cd /home/oc/binf_6999_2026/
+#Cloning the batter repository, as the sc
+git clone https://github.com/lulab/BATTER
+cd BATTER
+apptainer exec --nv -B $(pwd) $BATTER /bin/bash -c "source activate batter-env && scripts/batter-tpe --help"
+
+
+#Testing the software with the example data provided
+apptainer exec --nv -B $(pwd) $BATTER /bin/bash -c "conda activate batter-env && scripts/batter-tpe --fasta examples/e.coli/genome.fna --output examples/e.coli/TPE.bed --device cpu"
+
+
+
 
 # Running BATTER on phage data 
 apptainer exec batter_latest.sif batter --input sequences.fa --output results/

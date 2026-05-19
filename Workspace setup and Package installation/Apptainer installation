@@ -1,3 +1,5 @@
+Apptainer is a linux container platform optimized for High Performance Computing (HPC) AND Enterprise Performance Computing (HPC). Apptainer containers provide an application virtualizationlayer enabling mobility of compute via both application and environmant portability. 
+
 Pre built packages of Apptainer installed on Ubuntu system v 22.04 using sudo command
 
 #!/bin/bash

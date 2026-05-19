@@ -14,3 +14,17 @@ apptainer --version
 
 #Pulling the docker container image for BATTER
 apptainer pull batter.sif docker://jinyf1998/batter:v0.0
+
+#Setting the path to BATTER as a variable
+BATTER=/home/oc/binf_6999_2026/batter.sif
+echo $BATTER
+
+
+# Running BATTER on phage data 
+
+
+#COMEBACK TO THIS LATER FOR OTHER PACKAGES
+#Storing the container paths in the bash.rc file
+export BATTER=/home/oc/binf_6999_2026/batter.sif
+export RHOTERM=/home/oc/binf_6999_2026/rhoterm.sif
+export TERMNET=/home/oc/binf_6999_2026/terminatornet.sif

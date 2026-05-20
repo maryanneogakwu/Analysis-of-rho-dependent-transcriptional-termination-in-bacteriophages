@@ -33,7 +33,7 @@ apptainer exec --nv -B $(pwd) $BATTER /bin/bash -c "source activate batter-env &
 
 
 #Testing the software with the example data provided
-apptainer exec --nv -B $(pwd) $BATTER /bin/bash -c "conda activate batter-env && scripts/batter-tpe --fasta examples/e.coli/genome.fna --output examples/e.coli/TPE.bed --device cpu"
+apptainer exec --nv -B $(pwd) $BATTER /bin/bash -c "source activate batter-env && scripts/batter-tpe --fasta examples/e.coli/genome.fna --output examples/e.coli/TPE.bed --device cpu"
 
 
 
@@ -44,6 +44,13 @@ OR
 # sif is the path of image
 apptainer exec --nv -B $(pwd) batter.sif /bin/bash
 conda activate batter-env
+OR
+# Run batter-tpe
+apptainer exec --nv -B $(pwd) $BATTER /bin/bash -c "source activate batter-env && scripts/batter-tpe --fasta your_genome.fna --output output.bed --device cpu"
+
+# Run batter-rut
+apptainer exec --nv -B $(pwd) $BATTER /bin/bash -c "source activate batter-env && scripts/batter-rut -i your_genome.fna -ivs your_tpe.bed --output output.bed"
+
 
 #COMEBACK TO THIS LATER FOR OTHER PACKAGES
 #Storing the container paths in the bash.rc file

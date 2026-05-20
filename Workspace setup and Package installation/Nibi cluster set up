@@ -1,0 +1,14 @@
+Setting up the Nibi cluster on the linux terminal
+
+ssh -V
+OpenSSH_8.9p1 Ubuntu0.15, OpenSSL 3.0.2 15 Mar 2022
+# Generate a key pair on your Linux machine
+ssh-keygen -t ed25519 -C "mogakwu@nibi"
+
+# Copy your public key to Nibi
+#Add key to ssh keys on website
+ssh-copy-id mogakwu@nibi.computecanada.ca
+ssh mogakwu@nibi.computecanada.ca
+
+# Copy the BATTER sif file to Nibi
+scp /home/oc/binf_6999_2026/batter.sif mogakwu@nibi.computecanada.ca:~/

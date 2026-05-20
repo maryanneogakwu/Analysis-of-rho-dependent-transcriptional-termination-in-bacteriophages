@@ -10,5 +10,11 @@ ssh-keygen -t ed25519 -C "mogakwu@nibi"
 ssh-copy-id mogakwu@nibi.computecanada.ca
 ssh mogakwu@nibi.computecanada.ca
 
-# Copy the BATTER sif file to Nibi
-scp /home/oc/binf_6999_2026/batter.sif mogakwu@nibi.computecanada.ca:~/
+#Pull BATTER.sif container from Docker Hub on the Nibi terminal
+module load apptainer
+apptainer pull /scratch/mogakwu/binf_6999_2026/batter.sif docker://jinyf1998/batter:v0.0
+
+nano ~/.bashrc
+export BATTER=/scratch/mogakwu/binf_6999_2026/batter.sif
+source ~/.bashrc
+apptainer exec --nv -B $(pwd) $BATTER /bin/bash -c "source activate batter-env && scripts/batter-tpe --help"

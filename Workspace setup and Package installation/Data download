@@ -6,16 +6,17 @@ SLURM Script
 #SBATCH --job-name=download_phages
 #SBATCH --time=02:00:00
 #SBATCH --mem=4G
-#S0BATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=1
 #SBATCH --output=/scratch/mogakwu/binf_6999_2026/phages/logs/download_%j.out
 #SBATCH --error=/scratch/mogakwu/binf_6999_2026/phages/logs/download_%j.err
 
 #Load NCBI E-utilities
-module load entrez-direct
+module load StdEnv/2023
+module load edirect/20.9.20231210
 
 #Paths and Output directory
 OUTDIR=/scratch/mogakwu/binf_6999_2026/phages
-SAMPLES=/scratch/mogakwu/binf_6999_2026/samples.txt
+SAMPLES=/scratch/mogakwu/binf_6999_2026/phages/samples.txt
 mkdir -p $OUTDIR
 
 

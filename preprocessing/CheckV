@@ -2,6 +2,7 @@ module load StdEnv/2023
 module load apptainer/1.4.5
 apptainer pull /scratch/mogakwu/binf_6999_2026/checkv.sif docker://quay.io/biocontainers/checkv:1.0.1--pyhdfd78af_0
 
+#Bashrc file
 nano ~/.bashrc
 module load StdEnv/2023
 module load apptainer/1.4.5
@@ -9,5 +10,18 @@ export CHECKV=/scratch/mogakwu/binf_6999_2026/checkv.sif
 export CHECKVDB=/scratch/mogakwu/binf_6999_2026/checkv_db/checkv-db-v1.2
 source ~/.bashrc
 
+#Downloading the database
 wget https://portal.nersc.gov/CheckV/checkv-db-v1.2.tar.gz
 tar -xzvf checkv-db-v1.2.tar.gz
+
+#Building the DIAMOND database because it is built locally after download as this saves download size 
+apptainer exec $CHECKV diamond makedb \
+    --in /scratch/mogakwu/binf_6999_2026/checkv_db/checkv-db-v1.2/genome_db/checkv_reps.faa \
+    --db /scratch/mogakwu/binf_6999_2026/checkv_db/checkv-db-v1.2/genome_db/checkv_reps
+
+#Testing the checkv database on just one sample
+apptainer exec $CHECKV checkv end_to_end \
+    /scratch/mogakwu/binf_6999_2026/phages/AF246223_Mycoplasma_phage_P1.fasta \
+    /scratch/mogakwu/binf_6999_2026/practice/checkv_test \
+    -d $CHECKVDB \
+    -t 4

@@ -1,0 +1,13 @@
+module load StdEnv/2023
+module load apptainer/1.4.5
+apptainer pull /scratch/mogakwu/binf_6999_2026/checkv.sif docker://quay.io/biocontainers/checkv:1.0.1--pyhdfd78af_0
+
+nano ~/.bashrc
+module load StdEnv/2023
+module load apptainer/1.4.5
+export CHECKV=/scratch/mogakwu/binf_6999_2026/checkv.sif
+export CHECKVDB=/scratch/mogakwu/binf_6999_2026/checkv_db/checkv-db-v1.2
+source ~/.bashrc
+
+wget https://portal.nersc.gov/CheckV/checkv-db-v1.2.tar.gz
+tar -xzvf checkv-db-v1.2.tar.gz

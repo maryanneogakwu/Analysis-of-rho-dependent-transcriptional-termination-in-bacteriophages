@@ -1,0 +1,15 @@
+apptainer pull /scratch/mogakwu/binf_6999_2026/phanotate.sif docker://quay.io/biocontainers/phanotate:1.6.6--py312h28adbb1_0
+
+#Adding path to bash file
+nano ~/.bashrc
+export PHANOTATE=/scratch/mogakwu/binf_6999_2026/phanotate.sif
+source ~/.bashrc
+
+#Testing to see if it works
+apptainer exec phanotate.sif phanotate.py --help
+
+#Testing Phanotate on just one file
+apptainer exec $PHANOTATE phanotate.py \
+    /scratch/mogakwu/binf_6999_2026/phages/AF246223_Mycoplasma_phage_P1.fasta \
+    -o /scratch/mogakwu/binf_6999_2026/practice/AF246223_phanotate.tsv \
+    -f tabular

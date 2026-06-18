@@ -57,3 +57,77 @@ else
 fi
 
 echo "[DONE] $SAMPLE finished"
+
+#################################################################################
+#BATTER requires gff2bed.py script to convert the GFF gene annotaions to BED format.
+#!/usr/bin/env python3
+"""
+Convert Phanotate tabular output to GFF3 format for BATTER input
+Usage: python phanotate_to_gff.py <input.tsv> <output.gff>
+"""
+
+import sys
+import os
+
+def phanotate_to_gff(input_tsv, output_gff):
+    with open(input_tsv, 'r') as infile, open(output_gff, 'w') as outfile:
+        # Write GFF3 header
+        outfile.write("##gff-version 3\n")
+        
+        gene_count = 0
+        
+        for line in infile:
+            # Skip comment lines
+            if line.startswith('#'):
+                continue
+            
+            fields = line.strip().split('\t')
+            if len(fields) < 5:
+                continue
+            
+            start = int(fields[0])
+            stop  = int(fields[1])
+            frame = fields[2]
+            contig = fields[3]
+            score = fields[4]
+            
+            gene_count += 1
+            gene_id = f"gene_{gene_count:04d}"
+            
+            # GFF3 is always start < end regardless of strand
+            gff_start = min(start, stop)
+            gff_end   = max(start, stop)
+            
+            # Write GFF3 line
+            # Columns: seqid, source, type, start, end, score, strand, phase, attributes
+            outfile.write(
+                f"{contig}\tPhanotate\tCDS\t{gff_start}\t{gff_end}\t"
+                f"{score}\t{frame}\t0\tID={gene_id};Name={gene_id}\n"
+            )
+        
+        print(f"[SUCCESS] Converted {gene_count} genes to GFF3: {output_gff}")
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python phanotate_to_gff.py <input.tsv> <output.gff>")
+        sys.exit(1)
+    
+    input_tsv  = sys.argv[1]
+    output_gff = sys.argv[2]
+    
+    if not os.path.exists(input_tsv):
+        print(f"[ERROR] Input file not found: {input_tsv}")
+        sys.exit(1)
+    
+    phanotate_to_gff(input_tsv, output_gff)
+
+
+#Testing the conversion on a single sample
+module load StdEnv/2023
+module load python/3.11.5
+
+mkdir -p /scratch/mogakwu/binf_6999_2026/gff_results
+
+python /scratch/mogakwu/binf_6999_2026/scripts/phanotate_to_gff.py \
+    /scratch/mogakwu/binf_6999_2026/practice/phanotate/AF246223_phanotate.tsv \
+    /scratch/mogakwu/binf_6999_2026/practice/AF246223.gff

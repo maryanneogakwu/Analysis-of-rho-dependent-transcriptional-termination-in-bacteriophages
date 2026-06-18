@@ -13,3 +13,47 @@ apptainer exec $PHANOTATE phanotate.py \
     /scratch/mogakwu/binf_6999_2026/phages/AF246223_Mycoplasma_phage_P1.fasta \
     -o /scratch/mogakwu/binf_6999_2026/practice/AF246223_phanotate.tsv \
     -f tabular
+
+#Running phanotate on all samples
+#!/bin/bash
+#SBATCH --account=def-cottenie
+#SBATCH --job-name=phanotate_phages
+#SBATCH --time=00:30:00
+#SBATCH --mem=4G
+#SBATCH --cpus-per-task=2
+#SBATCH --array=1-47
+#SBATCH --output=/scratch/mogakwu/binf_6999_2026/phanotate/logs/phanotate_%A_%a.out
+#SBATCH --error=/scratch/mogakwu/binf_6999_2026/phanotate/logs/phanotate_%A_%a.err
+
+#Load apptainer
+module load StdEnv/2023
+module load apptainer/1.4.5
+
+#Setting Paths
+BASEDIR=/scratch/mogakwu/binf_6999_2026
+PHANOTATE=$BASEDIR/phanotate.sif
+PHAGE_DIR=$BASEDIR/phages
+OUTDIR=$BASEDIR/phanotate/phanotate_results
+mkdir -p $OUTDIR
+
+#Get the sample for this array task
+FASTA=$(ls $PHAGE_DIR/*.fasta | sed -n "${SLURM_ARRAY_TASK_ID}p")
+SAMPLE=$(basename $FASTA .fasta)
+
+echo "[START] Running Phanotate on $SAMPLE"
+
+# Run Phanotate
+apptainer exec $PHANOTATE phanotate.py \
+    $FASTA \
+    -o $OUTDIR/${SAMPLE}_phanotate.tsv \
+    -f tabular
+
+# Check success
+if [[ $? -eq 0 && -s $OUTDIR/${SAMPLE}_phanotate.tsv ]]; then
+    echo "[SUCCESS] Phanotate completed for $SAMPLE"
+else
+    echo "[ERROR] Phanotate failed for $SAMPLE"
+    exit 1
+fi
+
+echo "[DONE] $SAMPLE finished"

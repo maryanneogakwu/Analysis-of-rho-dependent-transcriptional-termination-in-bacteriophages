@@ -12,6 +12,7 @@ sudo apt install -y apptainer
 apptainer --version 
 #apptainer version 1.5.0
 
+######################## BATTER INSTALLATION ####################
 #Pulling the docker container image for BATTER
 apptainer pull batter.sif docker://jinyf1998/batter:v0.0
 
@@ -35,9 +36,6 @@ apptainer exec --nv -B $(pwd) $BATTER /bin/bash -c "source activate batter-env &
 #Testing the software with the example data provided
 apptainer exec --nv -B $(pwd) $BATTER /bin/bash -c "source activate batter-env && scripts/batter-tpe --fasta examples/e.coli/genome.fna --output examples/e.coli/TPE.bed --device cpu"
 
-
-
-
 # Running BATTER on phage data 
 apptainer exec batter_latest.sif batter --input sequences.fa --output results/
 OR
@@ -52,8 +50,38 @@ apptainer exec --nv -B $(pwd) $BATTER /bin/bash -c "source activate batter-env &
 apptainer exec --nv -B $(pwd) $BATTER /bin/bash -c "source activate batter-env && scripts/batter-rut -i your_genome.fna -ivs your_tpe.bed --output output.bed"
 
 
+##################################### RHOTERMPREDICT INSTALLATION #######################################
+#Pulling the rhotermpredict image
+apptainer pull /scratch/mogakwu/binf_6999_2026/rhotermpredict.sif docker://quay.io/biocontainers/rhotermpredict:3.4--pyh7e72e81_0
+
+
+########################## BACTERMFINDER INSTALLATION #####################
+#BacTermFinder doesn't have a pre-built image so it will be installed and rn in a virtual environment 
+#Clone the repo
+cd /scratch/mogakwu/binf_6999_2026
+git clone https://github.com/BioinformaticsLabAtMUN/BacTermFinder
+
+# Load Python
+module load StdEnv/2023
+module load python/3.11.5
+
+# Create a virtual environment
+cd BacTermFinder
+python -m venv bactermfinder-env
+source bactermfinder-env/bin/activate
+
+# Install dependencies
+pip install numpy
+pip install -r requirements.txt
+
+export BACTERMFINDER=/scratch/mogakwu/binf_6999_2026/BacTermFinder
+
+
 #COMEBACK TO THIS LATER FOR OTHER PACKAGES
 #Storing the container paths in the bash.rc file
 export BATTER=/home/oc/binf_6999_2026/batter.sif
 export RHOTERM=/home/oc/binf_6999_2026/rhoterm.sif
-export TERMNET=/home/oc/binf_6999_2026/terminatornet.sif
+
+
+
+

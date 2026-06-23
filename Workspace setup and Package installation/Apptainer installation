@@ -58,7 +58,7 @@ apptainer pull /scratch/mogakwu/binf_6999_2026/rhotermpredict.sif docker://quay.
 ########################## BACTERMFINDER INSTALLATION #####################
 #BacTermFinder doesn't have a pre-built image so it will be installed and rn in a virtual environment 
 #Clone the repo
-cd /scratch/mogakwu/binf_6999_2026
+cd binf_6999_2026
 git clone https://github.com/BioinformaticsLabAtMUN/BacTermFinder
 
 # Load Python
@@ -70,9 +70,13 @@ cd BacTermFinder
 python -m venv bactermfinder-env
 source bactermfinder-env/bin/activate
 
-# Install dependencies
+#Install dependencies
 pip install numpy
 pip install -r requirements.txt
+#grpcio==1.47.0 not available on Nibi as only never versions are, so the available vrsions were downlaoded
+pip install grpcio==1.51.1
+#Installing the rest of the requirements ignoring grpcio
+pip install -r requirements.txt --ignore-installed grpcio
 
 export BACTERMFINDER=/scratch/mogakwu/binf_6999_2026/BacTermFinder
 

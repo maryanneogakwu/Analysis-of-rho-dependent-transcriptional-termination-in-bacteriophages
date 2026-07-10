@@ -16,3 +16,6 @@ echo ""
 echo "==============================="
 echo "BATTER filtering complete"
 echo "==============================="
+
+#How many BATTER high confidence predictions per sample
+wc -l /scratch/mogakwu/binf_6999_2026/batter_filtered/*.bed

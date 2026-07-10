@@ -1,0 +1,18 @@
+#Add prevoius work flow for differnet parameter restrictions and why I ended up using the most restrictive parameters
+
+
+#Comments on why I'm filtering goes here
+for BED in /scratch/mogakwu/binf_6999_2026/batter_results2/*_TPE.RUT.bed; do
+    SAMPLE=$(basename $BED _TPE.RUT.bed)
+    echo "[START] Filtering BATTER results for $SAMPLE"
+
+    awk '$5 > 1.0' $BED > /scratch/mogakwu/binf_6999_2026/batter_filtered/${SAMPLE}_filtered.bed
+
+    COUNT=$(wc -l < /scratch/mogakwu/binf_6999_2026/batter_filtered/${SAMPLE}_filtered.bed)
+    echo "[DONE] $SAMPLE — $COUNT high confidence predictions"
+done
+
+echo ""
+echo "==============================="
+echo "BATTER filtering complete"
+echo "==============================="

@@ -1,0 +1,20 @@
+#Initial terminator identifications were run through a BactermFinder web tool as running through commandline on cluster was causing dependency issues.
+#Paramters were set based on Genome size
+
+
+#Based on the scores predicted by each of the 4 CNN models that BactermFinder uses, the scores assigned to predicted sequences are averaged between the 4 models. 
+#Prediction scores close to 1.0 indicate a very high confidence score within the window and there being a very likely terminator.
+#Scores close to 0 indicate a very low confidence score and is likely not a terminator within the window. 
+#Scores within the typical Threshold of ≥ 0.5 are considered positive terminator predictions.
+
+# The results of the Bactermfinder predictions were filteredand to reflect only high and typical threshold predictions
+
+for CSV in /scratch/mogakwu/binf_6999_2026/bactermfinder_results/*.csv; do
+    SAMPLE=$(basename $CSV .csv)
+    echo "[START] Filtering $SAMPLE"
+    
+    awk -F',' 'NR==1 || $9 >= 0.5' $CSV > /scratch/mogakwu/binf_6999_2026/bactermfinder_filtered/${SAMPLE}_filtered.csv
+    
+    COUNT=$(tail -n +2 /scratch/mogakwu/binf_6999_2026/bactermfinder_filtered/${SAMPLE}_filtered.csv | wc -l)
+    echo "[DONE] $SAMPLE — $COUNT predictions above threshold"
+done

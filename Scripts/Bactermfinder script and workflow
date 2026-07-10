@@ -18,3 +18,8 @@ for CSV in /scratch/mogakwu/binf_6999_2026/bactermfinder_results/*.csv; do
     COUNT=$(tail -n +2 /scratch/mogakwu/binf_6999_2026/bactermfinder_filtered/${SAMPLE}_filtered.csv | wc -l)
     echo "[DONE] $SAMPLE — $COUNT predictions above threshold"
 done
+
+#Checking how many high confidence predictions present for each sample with the bactermfinder tool
+for f in /scratch/mogakwu/binf_6999_2026/bactermfinder_filtered/*.csv; do
+    echo "$(basename $f): $(tail -n +2 $f | wc -l) predictions"
+done

@@ -1,0 +1,235 @@
+nano 3_tools_overlap.py
+
+#Check filtered BATTER files
+ls /scratch/mogakwu/binf_6999_2026/batter_filtered/ | head -3
+
+#Check filtered RhoTermPredict files
+ls /scratch/mogakwu/binf_6999_2026/rhoterm_filtered/ | head -3
+
+#Check filtered BacTermFinder files
+ls /scratch/mogakwu/binf_6999_2026/bactermfinder_filtered/ | head -3
+
+
+#Python script
+#!/usr/bin/env python3
+"""
+Three-way overlap comparison of rho-dependent terminator predictions
+across BATTER, RhoTermPredict and BacTermFinder for 47 phage genomes
+Overlap threshold: 50 bp
+"""
+
+import os
+import csv
+import glob
+
+# Paths
+BASEDIR = "/scratch/mogakwu/binf_6999_2026"
+BATTER_DIR = f"{BASEDIR}/batter_filtered"
+RHOTERM_DIR = f"{BASEDIR}/rhoterm_filtered"
+BACTERMFINDER_DIR = f"{BASEDIR}/bactermfinder_filtered"
+OUTDIR = f"{BASEDIR}/three_way_comparison"
+os.makedirs(OUTDIR, exist_ok=True)
+
+# Overlap threshold in base pairs
+OVERLAP_THRESHOLD = 50
+
+def check_overlap(start1, end1, start2, end2, threshold=50):
+    """Check if two intervals overlap by at least threshold bp"""
+    overlap_start = max(start1, start2)
+    overlap_end = min(end1, end2)
+    return (overlap_end - overlap_start) >= threshold
+
+def parse_batter(filepath):
+    """Parse filtered BATTER BED file"""
+    results = []
+    if not os.path.exists(filepath):
+        return results
+    with open(filepath) as f:
+        for line in f:
+            if not line.strip():
+                continue
+            fields = line.strip().split("\t")
+            if len(fields) < 6:
+                continue
+            results.append({
+                "start": int(fields[1]),
+                "end": int(fields[2]),
+                "id": fields[3],
+                "score": float(fields[4]),
+                "strand": fields[5]
+            })
+    return results
+
+def parse_rhoterm(filepath):
+    """Parse filtered RhoTermPredict CSV file"""
+    results = []
+    if not os.path.exists(filepath):
+        return results
+    with open(filepath) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            results.append({
+                "start": int(row["start_rut"]),
+                "end": int(row["end_rut"]),
+                "id": row["region"],
+                "score": float(row["score_sum"]),
+                "strand": row["strand"]
+            })
+    return results
+
+def parse_bactermfinder(filepath):
+    """Parse filtered BacTermFinder CSV file"""
+    results = []
+    if not os.path.exists(filepath):
+        return results
+    with open(filepath) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            results.append({
+                "start": int(row["start"]),
+                "end": int(row["end"]),
+                "id": f"{row['start']}-{row['end']}",
+                "score": float(row["average"]),
+                "strand": row["strand"]
+            })
+    return results
+
+# Get all samples from BATTER results
+batter_files = glob.glob(f"{BATTER_DIR}/*_filtered.bed")
+samples = [os.path.basename(f).replace("_filtered.bed", "") for f in batter_files]
+
+# Summary output
+summary_rows = []
+
+for sample in sorted(samples):
+    batter_file = f"{BATTER_DIR}/{sample}_filtered.bed"
+    rhoterm_file = f"{RHOTERM_DIR}/{sample}_filtered.csv"
+    bactermfinder_file = f"{BACTERMFINDER_DIR}/{sample}_filtered.csv"
+
+    batter = parse_batter(batter_file)
+    rhoterm = parse_rhoterm(rhoterm_file)
+    bactermfinder = parse_bactermfinder(bactermfinder_file)
+
+    # Find all pairwise and three-way overlaps
+    batter_rhoterm = []
+    batter_bactermfinder = []
+    rhoterm_bactermfinder = []
+    all_three = []
+
+    for b in batter:
+        for r in rhoterm:
+            if b["strand"] == r["strand"] and check_overlap(b["start"], b["end"], r["start"], r["end"], OVERLAP_THRESHOLD):
+                # Check if BacTermFinder also overlaps
+                three_way = False
+                for bf in bactermfinder:
+                    if b["strand"] == bf["strand"] and check_overlap(b["start"], b["end"], bf["start"], bf["end"], OVERLAP_THRESHOLD):
+                        all_three.append({
+                            "batter_id": b["id"],
+                            "batter_start": b["start"],
+                            "batter_end": b["end"],
+                            "batter_score": b["score"],
+                            "rhoterm_id": r["id"],
+                            "rhoterm_start": r["start"],
+                            "rhoterm_end": r["end"],
+                            "rhoterm_score": r["score"],
+                            "bactermfinder_start": bf["start"],
+                            "bactermfinder_end": bf["end"],
+                            "bactermfinder_score": bf["score"],
+                            "strand": b["strand"]
+                        })
+                        three_way = True
+                        break
+                if not three_way:
+                    batter_rhoterm.append({
+                        "batter_id": b["id"],
+                        "batter_start": b["start"],
+                        "batter_end": b["end"],
+                        "batter_score": b["score"],
+                        "rhoterm_id": r["id"],
+                        "rhoterm_start": r["start"],
+                        "rhoterm_end": r["end"],
+                        "rhoterm_score": r["score"],
+                        "strand": b["strand"]
+                    })
+
+    for b in batter:
+        for bf in bactermfinder:
+            if b["strand"] == bf["strand"] and check_overlap(b["start"], b["end"], bf["start"], bf["end"], OVERLAP_THRESHOLD):
+                batter_bactermfinder.append({
+                    "batter_id": b["id"],
+                    "batter_start": b["start"],
+                    "batter_end": b["end"],
+                    "batter_score": b["score"],
+                    "bactermfinder_start": bf["start"],
+                    "bactermfinder_end": bf["end"],
+                    "bactermfinder_score": bf["score"],
+                    "strand": b["strand"]
+                })
+
+    for r in rhoterm:
+        for bf in bactermfinder:
+            if r["strand"] == bf["strand"] and check_overlap(r["start"], r["end"], bf["start"], bf["end"], OVERLAP_THRESHOLD):
+                rhoterm_bactermfinder.append({
+                    "rhoterm_id": r["id"],
+                    "rhoterm_start": r["start"],
+                    "rhoterm_end": r["end"],
+                    "rhoterm_score": r["score"],
+                    "bactermfinder_start": bf["start"],
+                    "bactermfinder_end": bf["end"],
+                    "bactermfinder_score": bf["score"],
+                    "strand": r["strand"]
+                })
+
+    # Write three-way overlap file
+    if all_three:
+        with open(f"{OUTDIR}/{sample}_all_three.tsv", "w") as f:
+            f.write("batter_id\tbatter_start\tbatter_end\tbatter_score\t"
+                    "rhoterm_id\trhoterm_start\trhoterm_end\trhoterm_score\t"
+                    "bactermfinder_start\tbactermfinder_end\tbactermfinder_score\tstrand\n")
+            for o in all_three:
+                f.write(f"{o['batter_id']}\t{o['batter_start']}\t{o['batter_end']}\t{o['batter_score']}\t"
+                        f"{o['rhoterm_id']}\t{o['rhoterm_start']}\t{o['rhoterm_end']}\t{o['rhoterm_score']}\t"
+                        f"{o['bactermfinder_start']}\t{o['bactermfinder_end']}\t{o['bactermfinder_score']}\t"
+                        f"{o['strand']}\n")
+
+    # Write pairwise overlap files
+    if batter_rhoterm:
+        with open(f"{OUTDIR}/{sample}_batter_rhoterm.tsv", "w") as f:
+            f.write("batter_id\tbatter_start\tbatter_end\tbatter_score\t"
+                    "rhoterm_id\trhoterm_start\trhoterm_end\trhoterm_score\tstrand\n")
+            for o in batter_rhoterm:
+                f.write(f"{o['batter_id']}\t{o['batter_start']}\t{o['batter_end']}\t{o['batter_score']}\t"
+                        f"{o['rhoterm_id']}\t{o['rhoterm_start']}\t{o['rhoterm_end']}\t{o['rhoterm_score']}\t"
+                        f"{o['strand']}\n")
+
+    summary_rows.append({
+        "sample": sample,
+        "batter": len(batter),
+        "rhoterm": len(rhoterm),
+        "bactermfinder": len(bactermfinder),
+        "batter_rhoterm": len(batter_rhoterm),
+        "batter_bactermfinder": len(batter_bactermfinder),
+        "rhoterm_bactermfinder": len(rhoterm_bactermfinder),
+        "all_three": len(all_three)
+    })
+
+    print(f"[DONE] {sample}: "
+          f"BATTER={len(batter)} | "
+          f"RhoTerm={len(rhoterm)} | "
+          f"BacTermFinder={len(bactermfinder)} | "
+          f"BATTER+RhoTerm={len(batter_rhoterm)} | "
+          f"All 3={len(all_three)}")
+
+# Write summary
+with open(f"{OUTDIR}/three_way_summary.tsv", "w") as f:
+    f.write("sample\tbatter\trhoterm\tbactermfinder\t"
+            "batter_rhoterm\tbatter_bactermfinder\t"
+            "rhoterm_bactermfinder\tall_three\n")
+    for row in summary_rows:
+        f.write(f"{row['sample']}\t{row['batter']}\t{row['rhoterm']}\t"
+                f"{row['bactermfinder']}\t{row['batter_rhoterm']}\t"
+                f"{row['batter_bactermfinder']}\t{row['rhoterm_bactermfinder']}\t"
+                f"{row['all_three']}\n")
+
+print(f"\n[COMPLETE] Summary written to {OUTDIR}/three_way_summary.tsv")
+

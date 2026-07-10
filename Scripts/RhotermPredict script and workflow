@@ -1,0 +1,25 @@
+# Add rhotermpredict script, and explain how the parameters arent adjustable
+
+
+#Add how the confidence score are calculated and why I'm filtering
+
+ for CSV in /scratch/mogakwu/binf_6999_2026/rhoterm_results2/*_rhoterm.csv; do
+    SAMPLE=$(basename $CSV _rhoterm.csv)
+    echo "[START] Filtering RhoTermPredict results for $SAMPLE"
+
+    awk -F',' 'NR==1 || $6 > 100' $CSV > /scratch/mogakwu/binf_6999_2026/rhoterm_filtered/${SAMPLE}_filtered.csv
+
+    COUNT=$(tail -n +2 /scratch/mogakwu/binf_6999_2026/rhoterm_filtered/${SAMPLE}_filtered.csv | wc -l)
+    echo "[DONE] $SAMPLE — $COUNT high confidence predictions"
+done
+
+echo ""
+echo "==============================="
+echo "RhoTermPredict filtering complete"
+echo "==============================="
+
+
+#How many RhoTermPredict high confidence predictions per sample
+for f in /scratch/mogakwu/binf_6999_2026/rhoterm_filtered/*.csv; do
+    echo "$(basename $f): $(tail -n +2 $f | wc -l) predictions"
+done

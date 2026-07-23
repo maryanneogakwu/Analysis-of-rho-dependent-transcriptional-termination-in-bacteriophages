@@ -1,0 +1,54 @@
+Filtering high confidence predictions before finding overlapping tools between all 3 tools
+
+#BATTER
+for BED in /scratch/mogakwu/binf_6999_2026/batter_results/*_TPE.RUT.bed; do
+    SAMPLE=$(basename $BED _TPE.RUT.bed)
+    echo "[START] Filtering BATTER for $SAMPLE"
+
+    awk '$5 > 1.0' $BED > /scratch/mogakwu/binf_6999_2026/batter_filtered_v2/${SAMPLE}_filtered.bed
+
+    COUNT=$(wc -l < /scratch/mogakwu/binf_6999_2026/batter_filtered_v2/${SAMPLE}_filtered.bed)
+    echo "[DONE] $SAMPLE — $COUNT high confidence predictions"
+done
+
+echo ""
+echo "==============================="
+echo "BATTER filtering complete"
+echo "==============================="
+
+#############################################################################
+#Bactermfinder
+# BacTermFinder — average >= 0.5
+for CSV in /scratch/mogakwu/binf_6999_2026/bactermfinder_results_v2/*.csv; do
+    SAMPLE=$(basename $CSV .csv)
+    echo "[START] Filtering BacTermFinder for $SAMPLE"
+
+    awk -F',' 'NR==1 || $9 >= 0.5' $CSV > /scratch/mogakwu/binf_6999_2026/bactermfinder_filtered_v2/${SAMPLE}_filtered.csv
+
+    COUNT=$(tail -n +2 /scratch/mogakwu/binf_6999_2026/bactermfinder_filtered_v2/${SAMPLE}_filtered.csv | wc -l)
+    echo "[DONE] $SAMPLE — $COUNT high confidence predictions"
+done
+
+echo ""
+echo "==============================="
+echo "BacTermFinder filtering complete"
+echo "==============================="
+
+##################################################################################
+#Rhotermpredict
+
+# RhoTermPredict — score_sum > 100
+for CSV in /scratch/mogakwu/binf_6999_2026/rhoterm_results/*_rhoterm.csv; do
+    SAMPLE=$(basename $CSV _rhoterm.csv)
+    echo "[START] Filtering RhoTermPredict for $SAMPLE"
+
+    awk -F',' 'NR==1 || $6 > 100' $CSV > /scratch/mogakwu/binf_6999_2026/rhoterm_filtered/${SAMPLE}_filtered.csv
+
+    COUNT=$(tail -n +2 /scratch/mogakwu/binf_6999_2026/rhoterm_filtered/${SAMPLE}_filtered.csv | wc -l)
+    echo "[DONE] $SAMPLE — $COUNT high confidence predictions"
+done
+
+echo ""
+echo "==============================="
+echo "RhoTermPredict filtering complete"
+echo "==============================="

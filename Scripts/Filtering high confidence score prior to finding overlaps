@@ -19,11 +19,12 @@ echo "==============================="
 #############################################################################
 #Bactermfinder
 # BacTermFinder — average >= 0.5
-for CSV in /scratch/mogakwu/binf_6999_2026/bactermfinder_results_v2/*.csv; do
-    SAMPLE=$(basename $CSV .csv)
-    echo "[START] Filtering BacTermFinder for $SAMPLE"
+for CSV in /scratch/mogakwu/binf_6999_2026/bactermfinder_merged_v2/*_merged.csv; do
+    SAMPLE=$(basename $CSV _merged.csv)
+    echo "[START] Filtering $SAMPLE"
 
-    awk -F',' 'NR==1 || $9 >= 0.5' $CSV > /scratch/mogakwu/binf_6999_2026/bactermfinder_filtered_v2/${SAMPLE}_filtered.csv
+    awk -F',' 'NR==1 || $4 >= 0.5' $CSV > \
+        /scratch/mogakwu/binf_6999_2026/bactermfinder_filtered_v2/${SAMPLE}_filtered.csv
 
     COUNT=$(tail -n +2 /scratch/mogakwu/binf_6999_2026/bactermfinder_filtered_v2/${SAMPLE}_filtered.csv | wc -l)
     echo "[DONE] $SAMPLE — $COUNT high confidence predictions"

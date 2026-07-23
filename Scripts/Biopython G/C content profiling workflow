@@ -1,0 +1,276 @@
+module load StdEnv/2023
+module load python/3.11.5
+
+#Installing Biopython
+pip install biopython --no-index
+
+#Checking version of biopython
+python -c "import Bio; print(Bio.__version__)"
+1.86
+
+#!/usr/bin/env python3
+"""
+Part 6 — Sequence-Level Structural Validation
+C/G content profiling of predicted RUT sites using Biopython SeqUtils
+Validates cytosine enrichment characteristic of Rho binding sites
+Input: BATTER+RhoTermPredict overlap files and phage FASTA genomes
+Output: CG content profiles for each predicted RUT site
+"""
+
+import os
+import csv
+import glob
+from Bio import SeqIO
+from Bio.SeqUtils import gc_fraction
+
+# ============================================================
+# STEP 1 — Set paths
+# ============================================================
+BASEDIR = "/scratch/mogakwu/binf_6999_2026"
+PHAGE_DIR = f"{BASEDIR}/phages"
+OVERLAP_DIR = f"{BASEDIR}/three_way_comparison"
+OUTDIR = f"{BASEDIR}/cg_profiles"
+os.makedirs(OUTDIR, exist_ok=True)
+
+# ============================================================
+# STEP 2 — Function to load genome sequence from FASTA
+# ============================================================
+def load_genome(fasta_file):
+    """Load genome sequence from FASTA file"""
+    sequences = {}
+    for record in SeqIO.parse(fasta_file, "fasta"):
+        sequences[record.id] = str(record.seq)
+    return sequences
+
+# ============================================================
+# STEP 3 — Function to calculate C/G content metrics
+# ============================================================
+def calculate_cg_metrics(sequence):
+    """
+    Calculate C/G content metrics for a sequence
+    RUT sites are characteristically:
+    - C-rich (high cytosine content)
+    - Low G content
+    - High C/G ratio
+    """
+    if len(sequence) == 0:
+        return None
+
+    seq_upper = sequence.upper()
+    length = len(seq_upper)
+
+    # Count individual nucleotides
+    c_count = seq_upper.count('C')
+    g_count = seq_upper.count('G')
+    a_count = seq_upper.count('A')
+    t_count = seq_upper.count('T')
+
+    # Calculate proportions
+    c_fraction = c_count / length
+    g_fraction = g_count / length
+    gc_content = gc_fraction(seq_upper)
+
+    # C/G ratio — key RUT site characteristic
+    cg_ratio = c_count / g_count if g_count > 0 else float('inf')
+
+    # Pyrimidine content (C + T) — RUT sites are pyrimidine rich
+    pyrimidine_fraction = (c_count + t_count) / length
+
+    # Count YC dimers (pyrimidine-cytosine) — used by RhoTermPredict
+    yc_count = 0
+    for i in range(len(seq_upper) - 1):
+        if seq_upper[i] in ['C', 'T'] and seq_upper[i+1] == 'C':
+            yc_count += 1
+
+    return {
+        "length": length,
+        "c_count": c_count,
+        "g_count": g_count,
+        "a_count": a_count,
+        "t_count": t_count,
+        "c_fraction": round(c_fraction, 4),
+        "g_fraction": round(g_fraction, 4),
+        "gc_content": round(gc_content, 4),
+        "cg_ratio": round(cg_ratio, 4),
+        "pyrimidine_fraction": round(pyrimidine_fraction, 4),
+        "yc_count": yc_count
+    }
+
+# ============================================================
+# STEP 4 — Function to extract RUT site sequence from genome
+# ============================================================
+def extract_sequence(genome_seq, start, end, strand):
+    """
+    Extract sequence at given coordinates
+    For minus strand — return reverse complement
+    Coordinates are 0-based
+    """
+    # Convert to 0-based coordinates
+    seq = genome_seq[start:end]
+
+    if strand == "-":
+        # Reverse complement for minus strand
+        complement = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C', 'N': 'N'}
+        seq = ''.join(complement.get(b, 'N') for b in reversed(seq.upper()))
+
+    return seq
+
+# ============================================================
+# STEP 5 — Process all overlap files
+# ============================================================
+# Find all overlap files — both batter_rhoterm and all_three
+overlap_files = glob.glob(f"{OVERLAP_DIR}/*_batter_rhoterm.tsv") + \
+                glob.glob(f"{OVERLAP_DIR}/*_all_three.tsv")
+
+if len(overlap_files) == 0:
+    print(f"[ERROR] No overlap files found in {OVERLAP_DIR}")
+    exit(1)
+
+print(f"[INFO] Found {len(overlap_files)} overlap files to process\n")
+
+# Summary storage
+all_results = []
+summary_rows = []
+
+for overlap_file in sorted(overlap_files):
+    filename = os.path.basename(overlap_file)
+
+    # Extract sample name from filename
+    if "_batter_rhoterm.tsv" in filename:
+        sample = filename.replace("_batter_rhoterm.tsv", "")
+        overlap_type = "BATTER+RhoTermPredict"
+    else:
+        sample = filename.replace("_all_three.tsv", "")
+        overlap_type = "All_Three"
+
+    short = sample.split("_phage_")[-1] if "_phage_" in sample else sample
+
+    # Find matching FASTA file
+    fasta_files = glob.glob(f"{PHAGE_DIR}/{sample}*.fasta")
+    if len(fasta_files) == 0:
+        print(f"[WARNING] No FASTA found for {sample}")
+        continue
+
+    fasta_file = fasta_files[0]
+
+    # Load genome sequence
+    genome = load_genome(fasta_file)
+    if len(genome) == 0:
+        print(f"[WARNING] Empty genome for {sample}")
+        continue
+
+    # Get the first (and usually only) contig sequence
+    contig_id = list(genome.keys())[0]
+    genome_seq = genome[contig_id]
+
+    print(f"[PROCESSING] {short} ({overlap_type}) — genome: {len(genome_seq)} bp")
+
+    # Read overlap file
+    sites_processed = 0
+    sites_crich = 0
+
+    with open(overlap_file) as f:
+        reader = csv.DictReader(f, delimiter="\t")
+
+        for row in reader:
+            # Get coordinates — use BATTER coordinates as reference
+            try:
+                start = int(row["batter_start"])
+                end = int(row["batter_end"])
+                strand = row["strand"]
+                batter_score = float(row["batter_score"])
+                rhoterm_score = float(row["rhoterm_score"])
+            except (KeyError, ValueError):
+                continue
+
+            # Validate coordinates
+            if start < 0 or end > len(genome_seq) or start >= end:
+                continue
+
+            # Extract RUT site sequence
+            rut_sequence = extract_sequence(genome_seq, start, end, strand)
+
+            # Calculate C/G metrics
+            metrics = calculate_cg_metrics(rut_sequence)
+            if metrics is None:
+                continue
+
+            sites_processed += 1
+
+            # Flag as C-rich if C fraction > 0.3 (characteristic of RUT sites)
+            is_crich = metrics["c_fraction"] > 0.3
+            if is_crich:
+                sites_crich += 1
+
+            # Store result
+            result = {
+                "sample": sample,
+                "short_name": short,
+                "overlap_type": overlap_type,
+                "start": start,
+                "end": end,
+                "strand": strand,
+                "batter_score": batter_score,
+                "rhoterm_score": rhoterm_score,
+                "sequence": rut_sequence,
+                **metrics,
+                "is_crich": is_crich
+            }
+            all_results.append(result)
+
+    # Summary for this sample
+    crich_pct = round(sites_crich / sites_processed * 100, 1) if sites_processed > 0 else 0
+    summary_rows.append({
+        "sample": short,
+        "overlap_type": overlap_type,
+        "sites_analysed": sites_processed,
+        "sites_crich": sites_crich,
+        "crich_pct": crich_pct
+    })
+
+    print(f"[DONE] {short} — {sites_processed} sites analysed, "
+          f"{sites_crich} C-rich ({crich_pct}%)\n")
+
+# ============================================================
+# STEP 6 — Write detailed results per site
+# ============================================================
+detailed_file = f"{OUTDIR}/cg_profiles_detailed.tsv"
+with open(detailed_file, "w", newline="") as f:
+    fieldnames = ["sample", "short_name", "overlap_type", "start", "end",
+                  "strand", "batter_score", "rhoterm_score", "sequence",
+                  "length", "c_count", "g_count", "a_count", "t_count",
+                  "c_fraction", "g_fraction", "gc_content", "cg_ratio",
+                  "pyrimidine_fraction", "yc_count", "is_crich"]
+    writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter="\t")
+    writer.writeheader()
+    writer.writerows(all_results)
+
+print(f"[SAVED] Detailed results: {detailed_file}")
+
+# ============================================================
+# STEP 7 — Write summary
+# ============================================================
+summary_file = f"{OUTDIR}/cg_profiles_summary.tsv"
+with open(summary_file, "w", newline="") as f:
+    fieldnames = ["sample", "overlap_type", "sites_analysed",
+                  "sites_crich", "crich_pct"]
+    writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter="\t")
+    writer.writeheader()
+    writer.writerows(summary_rows)
+
+print(f"[SAVED] Summary: {summary_file}")
+
+# ============================================================
+# STEP 8 — Print overall statistics
+# ============================================================
+total_sites = sum(r["sites_analysed"] for r in summary_rows)
+total_crich = sum(r["sites_crich"] for r in summary_rows)
+overall_crich_pct = round(total_crich / total_sites * 100, 1) if total_sites > 0 else 0
+
+print(f"\n===============================")
+print(f"Overall C/G Profile Summary")
+print(f"===============================")
+print(f"Total sites analysed:  {total_sites}")
+print(f"C-rich sites (>30% C): {total_crich}")
+print(f"Overall C-rich rate:   {overall_crich_pct}%")
+print(f"\nResults saved to: {OUTDIR}/")
